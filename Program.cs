@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.IO.Compression;
+using System.Security.Permissions;
 
 namespace SeekAndArchive
 {
@@ -73,10 +74,28 @@ namespace SeekAndArchive
                 //WatcherChanged() method is the param of FileSystemEventHandler !
                 newWatcher.Changed += new FileSystemEventHandler(WatcherChanged);
 
+                // Watch for changes in LastAccess and LastWrite times, and
+                // the renaming of files or directories.
+                newWatcher.NotifyFilter = NotifyFilters.LastAccess
+                     | NotifyFilters.LastWrite
+                     | NotifyFilters.FileName
+                     | NotifyFilters.DirectoryName;
+
+                // Add event handlers.
+                newWatcher.Changed += OnChanged;
+                newWatcher.Created += OnChanged;
+                newWatcher.Deleted += OnChanged;
+                newWatcher.Renamed += OnRenamed;
+
+                // Begin watching.
                 newWatcher.EnableRaisingEvents = true;
                 _watchers.Add(newWatcher);
 
                 Console.WriteLine($"{file.FullName} file is watched.");
+
+                // Wait for the user to quit the program.
+                Console.WriteLine("Press 'q' to quit the sample.");
+                while (Console.Read() != 'q') ;
             }
         }
 
@@ -125,6 +144,15 @@ namespace SeekAndArchive
             output.Close();
         }
 
+        // Define the event handlers.
+        private static void OnChanged(object source, FileSystemEventArgs e) =>
+            // Specify what is done when a file is changed, created, or deleted.
+            Console.WriteLine($"File: {e.FullPath} {e.ChangeType}");
+
+        private static void OnRenamed(object source, RenamedEventArgs e) =>
+            // Specify what is done when a file is renamed.
+            Console.WriteLine($"File: {e.OldFullPath} renamed to {e.FullPath}");
 
     }
+
 }
